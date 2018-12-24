@@ -33,7 +33,7 @@ int main()
   uWS::Hub h;
 
   double init_dp[3] = {0.1,0,0.5};
-  TwiddlingPID pid = TwiddlingPID(init_dp, 4.0, 1000);
+  TwiddlingPID pid = TwiddlingPID(init_dp, 4.0, 2000);
   // TODO: Initialize the pid variable.
   double init_Kp = 0.25;
   double init_Kd = 0.75;
@@ -118,7 +118,11 @@ int main()
   });
 
   int port = 4567;
+#ifdef _USE_VS
+  if (h.listen("127.0.0.1", port))
+#else
   if (h.listen(port))
+#endif // _USE_VS
   {
     std::cout << "Listening to port " << port << std::endl;
   }
