@@ -1,7 +1,7 @@
 #include <uWS/uWS.h>
 #include <iostream>
 #include "json.hpp"
-#include "PID.h"
+#include "TwiddlingPID.h"
 #include <math.h>
 
 // for convenience
@@ -32,12 +32,14 @@ int main()
 {
   uWS::Hub h;
 
-  PID pid;
+  double init_dp[3] = {0.1,0,0.5};
+  TwiddlingPID pid = TwiddlingPID(init_dp, 4.0, 1000);
   // TODO: Initialize the pid variable.
   double init_Kp = 0.25;
   double init_Kd = 0.75;
   double init_Ki = 0;
   pid.Init(init_Kp, init_Ki, init_Kd);
+  std::cout << "Kp: " << pid.Kp << " Ki: " << pid.Ki << " Kd: " << pid.Kd << std::endl;
 
   h.onMessage([&pid](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
@@ -66,13 +68,21 @@ int main()
           steer_value = pid.TotalError();
 
           // DEBUG
-          std::cout << "CTE: " << cte << " Steering Value: " << steer_value << std::endl;
+          //std::cout << "CTE: " << cte << " Steering Value: " << steer_value << std::endl;
 
-          json msgJson;
-          msgJson["steering_angle"] = steer_value;
-          msgJson["throttle"] = 0.3;
-          auto msg = "42[\"steer\"," + msgJson.dump() + "]";
-          std::cout << msg << std::endl;
+
+          std::string msg = "42[\"reset\",{}]";
+          if(!std::isnan(steer_value)){
+            json msgJson;
+            msgJson["steering_angle"] = steer_value;
+            msgJson["throttle"] = 0.3;
+            msg = "42[\"steer\"," + msgJson.dump() + "]";
+          }
+          else{
+            std::cout << "Best Error: " << pid.best_error << std::endl;
+            std::cout << "Kp: " << pid.Kp << " Ki: " << pid.Ki << " Kd: " << pid.Kd << std::endl;
+          }
+          //std::cout << msg << std::endl;
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
         }
       } else {
