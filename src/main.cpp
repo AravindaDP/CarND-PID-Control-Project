@@ -32,16 +32,18 @@ int main()
 {
   uWS::Hub h;
 
-  double init_dp[3] = {0.1,0,0.5};
+  double init_dp[3] = {0, 0, 0};
   TwiddlingPID pid = TwiddlingPID(init_dp, 4.0, 2000);
   // TODO: Initialize the pid variable.
-  double init_Kp = 0.25;
-  double init_Kd = 0.75;
+  double init_Kp = 0.13;
+  double init_Kd = 3.0;
   double init_Ki = 0;
   pid.Init(init_Kp, init_Ki, init_Kd);
   std::cout << "Kp: " << pid.Kp << " Ki: " << pid.Ki << " Kd: " << pid.Kd << std::endl;
+  double throttle = 0;
+  double max_speed = 0;
 
-  h.onMessage([&pid](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
+  h.onMessage([&pid, &throttle, &max_speed](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
     // The 2 signifies a websocket event
@@ -57,6 +59,9 @@ int main()
           double speed = std::stod(j[1]["speed"].get<std::string>());
           double angle = std::stod(j[1]["steering_angle"].get<std::string>());
           double steer_value;
+          if (speed > max_speed) {
+            max_speed = speed;
+          }
 
           /*
           * TODO: Calcuate steering value here, remember the steering value is
@@ -67,22 +72,39 @@ int main()
           pid.UpdateError(cte);
           steer_value = pid.TotalError();
 
+          if (steer_value > 1.0) { steer_value = 1.0; }
+          if (steer_value < -1.0) { steer_value = -1.0; }
+
+          double throttle_value = 1.0;
+          if (speed > 50 && abs(cte) > 0.4 && abs(steer_value) > 0.3) {
+            throttle_value = -1.0;
+          }
+          if (throttle_value > throttle) {
+            throttle += 0.2;
+          }
+          else if(throttle_value < throttle) {
+            throttle -= 0.2;
+          }
+          if (throttle > 1.0) { throttle = 1.0; }
+          if (throttle < -1.0) { throttle = -1.0; }
+
           // DEBUG
-          //std::cout << "CTE: " << cte << " Steering Value: " << steer_value << std::endl;
+          std::cout << "CTE: " << cte << " Steering Value: " << steer_value << std::endl;
+          std::cout << "Max Speed:" << max_speed << std::endl;
 
 
           std::string msg = "42[\"reset\",{}]";
           if(!std::isnan(steer_value)){
             json msgJson;
             msgJson["steering_angle"] = steer_value;
-            msgJson["throttle"] = 0.3;
+            msgJson["throttle"] = throttle;
             msg = "42[\"steer\"," + msgJson.dump() + "]";
           }
           else{
             std::cout << "Best Error: " << pid.best_error << std::endl;
             std::cout << "Kp: " << pid.Kp << " Ki: " << pid.Ki << " Kd: " << pid.Kd << std::endl;
           }
-          //std::cout << msg << std::endl;
+          std::cout << msg << std::endl;
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
         }
       } else {
