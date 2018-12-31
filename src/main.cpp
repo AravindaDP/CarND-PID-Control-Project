@@ -63,6 +63,8 @@ int main()
             max_speed = speed;
           }
 
+		  double max_throttle = 0.7;
+
           /*
           * TODO: Calcuate steering value here, remember the steering value is
           * [-1, 1].
@@ -75,7 +77,7 @@ int main()
           if (steer_value > 1.0) { steer_value = 1.0; }
           if (steer_value < -1.0) { steer_value = -1.0; }
 
-          double throttle_value = 1.0;
+          double throttle_value = max_throttle;
           if (speed > 50 && abs(cte) > 0.4 && abs(steer_value) > 0.3) {
             throttle_value = -1.0;
           }
@@ -103,6 +105,7 @@ int main()
           else{
             std::cout << "Best Error: " << pid.best_error << std::endl;
             std::cout << "Kp: " << pid.Kp << " Ki: " << pid.Ki << " Kd: " << pid.Kd << std::endl;
+            throttle = 0;
           }
           std::cout << msg << std::endl;
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
